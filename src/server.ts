@@ -4,8 +4,10 @@ import helmet from "helmet";
 import path from "node:path";
 import session from "express-session";
 import passport from "passport";
+import hbs from "hbs";
 import { Strategy as LocalStrategy } from "passport-local";
 import { userIsAuthenticated } from "./middlewares/user-is-authenticated";
+import { samlRouter } from "./modules/saml/saml.router";
 
 const app = express();
 
@@ -39,6 +41,7 @@ app.use(express.json());
 
 // View
 app.set("view engine", "hbs");
+app.engine("handlebars", hbs.__express);
 const VIEW_PATH = path.join(__dirname, "views");
 app.set("views", VIEW_PATH);
 
@@ -58,6 +61,7 @@ passport.use(
   )
 );
 
+app.use("/saml", samlRouter);
 app.get("/login", (_IGNORE, res) => {
   res.render("login");
 });
