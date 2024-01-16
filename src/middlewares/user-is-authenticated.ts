@@ -8,5 +8,8 @@ export const userIsAuthenticated = (
   if (req.isAuthenticated()) {
     return next();
   }
-  res.redirect("/login");
+  const searchParams = new URLSearchParams({
+    return_to: req.originalUrl,
+  });
+  return res.redirect(`/login?${searchParams.toString()}`);
 };

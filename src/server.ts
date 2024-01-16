@@ -6,8 +6,9 @@ import session from "express-session";
 import passport from "passport";
 import hbs from "hbs";
 import { Strategy as LocalStrategy } from "passport-local";
-import { userIsAuthenticated } from "./middlewares/user-is-authenticated";
 import { samlRouter } from "./modules/saml/saml.router";
+import { userIsAuthenticated } from "./middlewares/user-is-authenticated";
+import { userRepo } from "./modules/auth/user.repo";
 
 const app = express();
 
@@ -18,10 +19,13 @@ app.use(helmet());
 // Session
 app.use(
   session({
+    // the name must be set due to the service provider has the same domain 'localhost'
+    name: "unique.sid",
     secret: "supersecret",
     resave: false,
     saveUninitialized: true,
     cookie: {
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
       httpOnly: true,
     },
   })
@@ -52,26 +56,44 @@ passport.use(
       passwordField: "password",
     },
     (username, password, done) => {
-      if (username === "admin@test.com" && password === "admin") {
-        return done(null, { username });
-      } else {
+      const user = userRepo.findUserByEmail(username);
+      if (!user || user.password !== password) {
         return done(null, false);
       }
+      return done(null, { id: user.id });
     }
   )
 );
 
 app.use("/saml", samlRouter);
-app.get("/login", (_IGNORE, res) => {
+app.get("/", (req, res) => {
+  if (req.isAuthenticated()) {
+    return res.redirect("/authenticated");
+  }
+  return res.redirect("/login");
+});
+app.get("/login", (req, res) => {
   res.render("login");
 });
 app.post(
   "/login",
   passport.authenticate("local", { failureRedirect: "/login" }),
-  (_IGNORE, res) => {
-    res.redirect("/authenticated");
+  (req, res) => {
+    if (req.query.return_to) {
+      return res.redirect(req.query.return_to as string);
+    }
+    return res.redirect("/authenticated");
   }
 );
+app.post("/logout", (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      console.error(err);
+      return res.sendStatus(500);
+    }
+    return res.redirect("/");
+  });
+});
 app.get("/authenticated", userIsAuthenticated, (req, res) => {
   res.render("authenticated", { user: req.user });
 });

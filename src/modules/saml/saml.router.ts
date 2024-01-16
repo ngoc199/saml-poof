@@ -6,17 +6,20 @@ import { Router } from "express";
 import samlp from "samlp";
 import fs from "node:fs";
 import path from "node:path";
+import { userIsAuthenticated } from "../../middlewares/user-is-authenticated";
+import { userRepo } from "../auth/user.repo";
+import { serviceProviderRepo } from "./service-provider.repo";
 
 export const samlRouter = Router();
 
 const IDP_PATHS = {
-  SSO: "/saml/sso",
-  SLO: "/saml/slo",
-  METADATA: "/saml/metadata",
+  SSO: "/sso",
+  SLO: "/slo",
+  METADATA: "/metadata",
 };
 
 const idpOptions = {
-  issuer: "unique-saml-issuer",
+  issuer: "urn:testsaml:accounts",
   cert: fs.readFileSync(path.join(__dirname, "../../../public_cert.pem")),
   key: fs.readFileSync(path.join(__dirname, "../../../private_key.pem")),
   postEndpointPath: "/saml/sso",
@@ -34,51 +37,26 @@ samlRouter.get(
   })
 );
 
-// samlRouter.get(["/", IDP_PATHS.SSO], (req, res, next) => {
-//   samlp.parseRequest(req, (err, data) => {
-//     if (err) {
-//       return res.render("error", {
-//         message: "SAML AuthnRequest Parse Error: " + err.message,
-//         error: err,
-//       });
-//     }
-//     if (data) {
-//       (req as any).authnRequest = {
-//         relayState: req.query.RelayState || req.body.RelayState,
-//         id: data.id,
-//         issuer: data.issuer,
-//         destination: data.destination,
-//         acsUrl: data.assertionConsumerServiceURL,
-//         forceAuthn: data.forceAuthn === "true",
-//       };
-//       console.log("Received AuthnRequest => \n", (req as any).authnRequest);
-//     }
-//     return res.render("user", {
-//       user: req.user,
-//       participant: req.participant,
-//       metadata: req.metadata,
-//       authnRequest: req.authnRequest,
-//       idp: req.idp.options,
-//       paths: IDP_PATHS,
-//     });
-//   });
-// });
-
-samlRouter.get(
-  "/sso",
-  samlp.auth({
+samlRouter.get("/sso", userIsAuthenticated, (req, res, next) => {
+  return samlp.auth({
     issuer: idpOptions.issuer,
     cert: idpOptions.cert,
     key: idpOptions.key,
-    getPostURL: (audience, authnRequestDom, req, callback) => {
-      return callback(null, "http://localhost:3000/login/callback");
+    getPostURL: (entityId, authnRequestDom, req, callback) => {
+      const serviceProvider = serviceProviderRepo.findServiceProvider(entityId);
+      // The `callback` will send the 500 Internal Server Error if there are any error
+      // We should send the 401 error by passing the `postUrl` with `null` value if the service provider is invalid
+      // @ts-ignore
+      return callback(null, serviceProvider?.callbackUrl);
     },
     getUserFromRequest: (req) => {
       // Here you should fetch the user from your database
+      const user = userRepo.findUserById((req.user as any).id);
+      if (!user) return undefined;
       return {
-        id: "122455623",
-        name: "admin",
-        emails: ["admin@test.com"],
+        id: user.id,
+        name: user.name,
+        emails: [user.email],
       };
     },
     // @ts-ignore
@@ -95,8 +73,8 @@ samlRouter.get(
         nonce,
       });
     },
-  })
-);
+  })(req, res, next);
+});
 
 samlRouter.get(
   "/slo",
