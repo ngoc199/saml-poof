@@ -46,7 +46,7 @@ app.use(express.json());
 // View
 app.set("view engine", "hbs");
 app.engine("handlebars", hbs.__express);
-const VIEW_PATH = path.join(__dirname, "views");
+const VIEW_PATH = path.join(__dirname, "../views");
 app.set("views", VIEW_PATH);
 
 passport.use(
