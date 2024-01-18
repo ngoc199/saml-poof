@@ -38,46 +38,54 @@ samlRouter.get(
 );
 
 samlRouter.get("/sso", userIsAuthenticated, (req, res, next) => {
-  return samlp.auth({
-    issuer: idpOptions.issuer,
-    cert: idpOptions.cert,
-    key: idpOptions.key,
-    getPostURL: (entityId, authnRequestDom, req, callback) => {
-      const serviceProvider = serviceProviderRepo.findServiceProvider(entityId);
-      (req as any).serviceProvider = serviceProvider;
-      // The `callback` will send the 500 Internal Server Error if there are any error
-      // We should send the 401 error by passing the `postUrl` with `null` value if the service provider is invalid
+  samlp.parseRequest(req, (err, authnRequestData) => {
+    if (err) {
+      return res.sendStatus(400);
+    }
+    return samlp.auth({
+      issuer: idpOptions.issuer,
+      cert: idpOptions.cert,
+      key: idpOptions.key,
+      getPostURL: (entityId, authnRequestDom, req, callback) => {
+        const serviceProvider =
+          serviceProviderRepo.findServiceProvider(entityId);
+        (req as any).serviceProvider = serviceProvider;
+        // The `callback` will send the 500 Internal Server Error if there are any error
+        // We should send the 401 error by passing the `postUrl` with `null` value if the service provider is invalid
+        // @ts-ignore
+        return callback(null, serviceProvider?.callbackUrl);
+      },
+      getUserFromRequest: (req) => {
+        // Here you should fetch the user from your database
+        const user = userRepo.findUserById((req.user as any).id);
+        const serviceProvider = (req as any).serviceProvider;
+        if (!user) return undefined;
+        return {
+          id: user.id,
+          name: user.name,
+          emails: [user.email],
+          recipient: serviceProvider.callbackUrl, // recipient attr of SubjectConfirmationData of Response
+          subject: user.email, // subject attr of SubjectConfirmationData of Response
+        };
+      },
       // @ts-ignore
-      return callback(null, serviceProvider?.callbackUrl);
-    },
-    getUserFromRequest: (req) => {
-      // Here you should fetch the user from your database
-      const user = userRepo.findUserById((req.user as any).id);
-      const serviceProvider = (req as any).serviceProvider;
-      if (!user) return undefined;
-      return {
-        id: user.id,
-        name: user.name,
-        emails: [user.email],
-        recipient: serviceProvider.callbackUrl, // recipient attr of SubjectConfirmationData of Response
-        subject: user.email, // subject attr of SubjectConfirmationData of Response
-      };
-    },
-    // @ts-ignore
-    responseHandler: (samlResponse, opts, req, res, next) => {
-      const nonce = crypto.randomBytes(16).toString("base64");
-      res.setHeader(
-        "Content-Security-Policy",
-        `default-src 'self'; script-src 'nonce-${nonce}'`
-      );
-      res.render("samlResponse", {
-        AcsUrl: opts.postUrl,
-        SAMLResponse: samlResponse.toString("base64"),
-        RelayState: opts.RelayState,
-        nonce,
-      });
-    },
-  })(req, res, next);
+      responseHandler: (samlResponse, opts, req, res, next) => {
+        const nonce = crypto.randomBytes(16).toString("base64");
+        res.setHeader(
+          "Content-Security-Policy",
+          `default-src 'self'; script-src 'nonce-${nonce}'`
+        );
+        res.render("samlResponse", {
+          AcsUrl: opts.postUrl,
+          SAMLResponse: samlResponse.toString("base64"),
+          RelayState: opts.RelayState,
+          nonce,
+        });
+      },
+      recipient: authnRequestData.assertionConsumerServiceURL,
+      audience: authnRequestData.issuer,
+    })(req, res, next);
+  });
 });
 
 samlRouter.get(
