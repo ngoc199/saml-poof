@@ -44,6 +44,7 @@ samlRouter.get("/sso", userIsAuthenticated, (req, res, next) => {
     key: idpOptions.key,
     getPostURL: (entityId, authnRequestDom, req, callback) => {
       const serviceProvider = serviceProviderRepo.findServiceProvider(entityId);
+      (req as any).serviceProvider = serviceProvider;
       // The `callback` will send the 500 Internal Server Error if there are any error
       // We should send the 401 error by passing the `postUrl` with `null` value if the service provider is invalid
       // @ts-ignore
@@ -52,11 +53,14 @@ samlRouter.get("/sso", userIsAuthenticated, (req, res, next) => {
     getUserFromRequest: (req) => {
       // Here you should fetch the user from your database
       const user = userRepo.findUserById((req.user as any).id);
+      const serviceProvider = (req as any).serviceProvider;
       if (!user) return undefined;
       return {
         id: user.id,
         name: user.name,
         emails: [user.email],
+        recipient: serviceProvider.callbackUrl, // recipient attr of SubjectConfirmationData of Response
+        subject: user.email, // subject attr of SubjectConfirmationData of Response
       };
     },
     // @ts-ignore
