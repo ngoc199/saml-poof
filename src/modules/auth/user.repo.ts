@@ -1,5 +1,11 @@
 const users = [
-  { id: "123123", name: "Admin", email: "admin@test.com", password: "admin" },
+  // The id is email of user to match Salesforce username
+  {
+    id: "test@ngocoder.com",
+    name: "Admin",
+    email: "test@ngocoder.com",
+    password: "test",
+  },
 ];
 
 const findUserByEmail = (email: string) => {

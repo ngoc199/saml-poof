@@ -11,6 +11,10 @@ const serviceProviders: ServiceProvider[] = [
     entityId: "urn:federation:MicrosoftOnline",
     callbackUrl: "https://login.microsoftonline.com/login.srf",
   },
+  {
+    entityId: "https://ngocoder-dev-ed.develop.my.salesforce.com",
+    callbackUrl: "https://ngocoder-dev-ed.develop.my.salesforce.com",
+  },
 ];
 
 const findServiceProvider = (entityId: string) => {
