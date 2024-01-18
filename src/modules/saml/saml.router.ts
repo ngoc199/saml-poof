@@ -87,3 +87,14 @@ samlRouter.get(
     },
   })
 );
+
+samlRouter.get("/service-providers", (req, res) => {
+  const serviceProviders = serviceProviderRepo.getAllServiceProviders();
+  res.render("serviceProviders", { serviceProviders });
+});
+
+samlRouter.post("/service-providers", (req, res) => {
+  const { entityId, callbackUrl } = req.body;
+  serviceProviderRepo.addServiceProvider({ entityId, callbackUrl });
+  res.redirect("/saml/service-providers");
+});

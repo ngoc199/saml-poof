@@ -7,14 +7,28 @@ const serviceProviders: ServiceProvider[] = [
     entityId: "http://localhost:3000",
     callbackUrl: "http://localhost:3000/login/callback",
   },
+  {
+    entityId: "urn:federation:MicrosoftOnline",
+    callbackUrl: "https://login.microsoftonline.com/login.srf",
+  },
 ];
 
 const findServiceProvider = (entityId: string) => {
   return serviceProviders.find((sp) => sp.entityId === entityId);
 };
 
+const getAllServiceProviders = () => {
+  return serviceProviders;
+};
+
+const addServiceProvider = (serviceProvider: ServiceProvider) => {
+  serviceProviders.push(serviceProvider);
+};
+
 export const serviceProviderRepo = {
   findServiceProvider,
+  addServiceProvider,
+  getAllServiceProviders,
 };
 
 type ServiceProvider = {

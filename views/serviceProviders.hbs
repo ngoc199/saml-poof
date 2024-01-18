@@ -1,0 +1,27 @@
+<style>
+    table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+    }
+</style>
+
+<h1>Service Providers</h1>
+<table>
+    <tr>
+        <th>Entity ID</th>
+        <th>Callback URL</th>
+    </tr>
+    {{#each serviceProviders}}
+        <tr>
+            <td>{{ this.entityId }}</td>
+            <td>{{this.callbackUrl}}</td>
+        </tr>
+    {{/each}}
+<table>
+
+<h2>Add Service Provider</h2>
+<form method="POST">
+    <input type="text" name="entityId" placeholder="Entity ID" />
+    <input type="text" name="callbackUrl" placeholder="Callback URL" />
+    <button type="submit">Add</button>
+</form>
